@@ -1,0 +1,112 @@
+<html>
+    <head>
+        <script src="js/jquery.min.js"></script>
+        <script src="js/jquery.ui.widget.js"></script>
+        <script src="js/jquery.iframe-transport.js"></script>
+        <script src="js/jquery.fileupload.js"></script>
+        <style type="text/css">
+            .width1{
+                width:500px;
+            }
+            .width2{
+                width:40%;
+                float:left;
+                text-align: right;
+                padding-right:10px;
+            }
+            .width3{
+                width:40%;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="mediacontainer">
+            <div class="width1 newmedia">
+                <fieldset class="media-item">
+                    <legend>Media</legend>
+                    <div class="width1"><span class="width2">Title</span><input class="width3" type="text" name="txtMediaTitle" value="t1"/></div></br>
+                    <div class="width1"><span class="width2">Description</span><input class="width3" type="text" name="txtMediaDescription" value="d1"/></div></br>
+                    <div class="width1"><span class="width2">Media</span><input class="width3" type="file" name="txtMediaFile"/></div></br>
+                </fieldset>
+            </div>
+        </div>
+        </br>
+        <div class="width1" style="text-align:center;"><button id="createreview" type="button" value="" style="height:30px;width:75%;">Upload</button></div>
+        </br>
+        <script type="text/javascript">
+
+            var serviceUrl = 'http://127.0.0.1:9051';
+            var attachMediaUrl = ''
+
+            var bindUploadEvent = function(){
+                var self = $('.newmedia');
+                self.fileupload({
+                    sequentialUploads: false,
+                    maxChunkSize: 100000,
+                    multipart: false,
+                    add: function (e, data) {
+                        var mimeType = data.fileInput[0].files[0].type;
+                        self.find('.media-item').attr('data-mime', mimeType);
+                        data.context = $('<button style="display:none;"/>').text('Upload')
+                            .appendTo(self.find('.media-item'))
+                            .click(function () {
+                                data.context = $('<p/>').text('Uploading...').replaceAll($(this));
+                                data.submit();
+                            });
+                    },
+                    beforeSend: function(xhr, data) {
+                        data.url = attachMediaUrl;
+                        var mediaId = self.find('.media-item').attr('data-media-id');
+                        xhr.setRequestHeader('X-Session-Id', mediaId);
+                    },
+                    done: function (e, data) {
+                        data.context.text('Upload finished.');
+                    }
+                });
+            };
+            bindUploadEvent();
+
+            var lastMediaId = 1;
+            $('#addmedia').click(function(){
+                $('.newmedia').removeClass('newmedia');
+                $('#mediacontainer').append($('.mediatemplate').clone().removeClass('mediatemplate').addClass('newmedia').show());
+                lastMediaId += 1;
+                $('.newmedia').slice(0,1).find('input[type="file"]').attr('name','f'+lastMediaId);
+            });
+
+            $('#createreview').click(function(){
+
+                var $item = $('#mediacontainer .media-item');
+                var mediaObj = {
+                    'Title'         : $item.find('[name="txtMediaTitle"]').val(),
+                    'Description'   : $item.find('[name="txtMediaDescription"]').val(),
+                    'MIME'          : $item.attr('data-mime'),
+                    'Owner'         : 'review'
+                };
+
+                $.ajax({
+                    url: serviceUrl+"/medias/v1/media",
+                    type:"POST",
+                    data: JSON.stringify(mediaObj),
+                    contentType:"application/json",
+                    success: function(response){
+                        console.log(response);
+                        attachMediaUrl = serviceUrl + '/medias/v1/media/' + response.MediaId + '/chunk/payload'
+                        $('#mediacontainer .media-item').attr('data-media-id', response.MediaId);
+                        $('#mediacontainer .media-item').find('button').click();
+                    }
+                });
+            });
+
+            var attachMediaFiles = function(){
+                var mediaItems = $('#mediacontainer .media-item');
+                $.each(mediaItems, function(index, item){
+                    var mediaid = $(item).attr('data-media-id');
+                    //TODO
+                    $(item).find('button').click();
+                });
+            };
+
+        </script>
+    </body>
+</html>
